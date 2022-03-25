@@ -1,0 +1,10 @@
+.idea
+.env
+*.sqlite3
+venv env
+/venv/
+/app/cards/migrations/
+/app/tournaments/migrations/
+/app/tables/migrations/
+/app/abstractuser/migrations/
+/app/profiles/
