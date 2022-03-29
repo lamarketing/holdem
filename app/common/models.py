@@ -19,7 +19,9 @@ class UUIDMixin(models.Model):
 
 
 class ClassicModelMixin(UUIDMixin, CreatedUpdatedMixin):
-    ...
+
+    class Meta:
+        abstract = True
 
 
 class StartEndMixin(models.Model):

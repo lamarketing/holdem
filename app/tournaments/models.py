@@ -13,3 +13,6 @@ class Tournament(ClassicModelMixin, StartEndMixin):
     seconds_to_think = models.PositiveSmallIntegerField(default=12)
 
     users = models.ManyToManyField(User)
+
+    class Meta:
+        abstract = False

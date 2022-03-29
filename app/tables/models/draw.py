@@ -43,3 +43,6 @@ class Draw(ClassicModelMixin):
         self.save()
         dealer.order += 10
         dealer.save()
+
+    class Meta:
+        abstract = False

@@ -37,3 +37,6 @@ class Action(ClassicModelMixin):
         choices=NameRoundChoices.choices,
         default=NameRoundChoices.preflop
     )
+
+    class Meta:
+        abstract = False

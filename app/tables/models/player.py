@@ -15,3 +15,6 @@ class Player(ClassicModelMixin):
     stack = models.PositiveSmallIntegerField(default=0)
     is_present = models.BooleanField(default=True)
     order = models.PositiveSmallIntegerField(default=1)
+
+    class Meta:
+        abstract = False

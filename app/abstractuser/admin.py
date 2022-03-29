@@ -48,7 +48,7 @@ class AbstractAdmin(UserAdmin):
             },
         ),
     )
-    readonly_fields = ('username', 'is_superuser')
+    # readonly_fields = ('username', 'is_superuser')
 
 
 admin.site.register(User, AbstractAdmin)

@@ -10,4 +10,9 @@ INSTALLED_APPS = [
     'channels',
     'abstractuser',
     'cards.apps.CardsConfig',
+    'tournaments.apps.TournamentsConfig',
+    'tables.apps.TablesConfig',
+    'dev.apps.DevConfig'
+
+
 ]

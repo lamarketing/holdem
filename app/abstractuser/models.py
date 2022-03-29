@@ -15,3 +15,6 @@ class User(AbstractUser):
         choices=RankChoices.choices,
         default=RankChoices.fish
     )
+
+    def __str__(self):
+        return f'{self.first_name} {self.last_name}'
