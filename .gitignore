@@ -8,3 +8,6 @@ venv env
 /app/tables/migrations/
 /app/abstractuser/migrations/
 /app/profiles/
+/app/dev/migrations/
+package-lock.json
+apt_pkg.so
