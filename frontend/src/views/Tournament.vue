@@ -5,7 +5,7 @@
         <ion-title>Турнир</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content :fullscreen="true">
+    <ion-content :fullscreen="true" class="page">
       <ion-header collapse="condense">
         <ion-toolbar>
           <ion-title size="large">Турнир</ion-title>
@@ -60,16 +60,29 @@
                 {{ tournament.seconds_to_think }} секунд
               </ion-label>
             </ion-item>
+            <ion-item>
+              <ion-avatar></ion-avatar>
+              <ion-label>Количество регистраций:
+                <ion-icon :icon="people" color="medium" class=""/>
+                {{ count_players }}
+              </ion-label>
+            </ion-item>
           </ion-list>
           <br><br>
-          <ion-button v-if="!is_registered" color="success" @click="registrate">
-            Зарегистрироваться
-          </ion-button>
-          <ion-button v-else color="danger" @click="unregistrate">
-            Отменить регистрацию
-          </ion-button>
+          <div v-if="tournament.is_registration">
+            <ion-button v-if="!is_registered" color="success" @click="registrate">
+              Зарегистрироваться
+            </ion-button>
+            <ion-button v-else color="danger" @click="unregistrate">
+              Отменить регистрацию
+            </ion-button>
+          </div>
+          <div v-else>
+            <ion-button disabled="">
+              Зарегистрироваться
+            </ion-button>
+          </div>
           <br>
-          <div v-if="is_active">ТУРНИР НАЧАЛСЯ</div>
         </div>
       </ion-grid>
     </ion-content>
@@ -81,10 +94,10 @@ import {defineComponent} from 'vue';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonGrid, IonItem, IonInput, IonLabel, IonButton, IonChip,
-  IonList, IonAvatar, IonIcon
+  IonList, IonAvatar, IonIcon,
 } from '@ionic/vue';
 
-import {trophy, radioButtonOn, timer} from 'ionicons/icons';
+import {trophy, radioButtonOn, timer, people} from 'ionicons/icons';
 
 import {makeDate} from "@/utils/date";
 
@@ -93,15 +106,17 @@ import {getTokenL, isAuth} from "@/api/auth";
 export default defineComponent({
   name: 'TournamentView',
   setup() {
+    const customFormatter = (value: number) => `${value}`;
     return {
-      trophy, radioButtonOn, timer,
-      makeDate
+      trophy, radioButtonOn, timer, people,
+      makeDate,
+      customFormatter
     }
   },
   components: {
     IonHeader, IonToolbar, IonTitle, IonContent, IonPage,
     IonGrid, IonItem, IonInput, IonLabel, IonButton, IonChip,
-    IonList, IonAvatar, IonIcon
+    IonList, IonAvatar, IonIcon,
   },
   data() {
     return {
@@ -111,9 +126,8 @@ export default defineComponent({
       error_auth: '',
       socket: this.WS(),
       tournament: null,
+      count_players: 0,
       is_registered: false,
-      is_active: false,
-      message: "",
     }
   },
   ionViewWillEnter() {
@@ -139,14 +153,29 @@ export default defineComponent({
         const mess = JSON.parse(e.data)
         console.log(mess)
         switch (mess.type) {
-          case 'sendTournamentInfo':
-            this.tournament = mess.data.tournament
-            this.is_registered = mess.data.is_registered
-            this.is_active = mess.data.tournament.active_now
+          case 'tournament_info':
+            this.tournament = mess.tournament[0]
+            this.count_players = mess.count_players
             break
-          case 'c_send_tournament_info':
-            this.tournament = mess.data.tournament
-            this.is_active = mess.data.tournament.active_now
+          case 'tournament_info_init':
+            this.tournament = mess.tournament
+            this.count_players = mess.count_players
+            break
+          case 'registration_open':
+            this.tournament = mess.tournament
+            this.count_players = 0
+            break
+          case 'registrate':
+            this.is_registered = mess.is_registered
+            break
+          case 'start_tournament':
+          case 'play':
+            this.tournament = null
+            if (mess.table) {
+              this.$router.push({name: 'play'})
+            } else {
+              this.$router.push({name: ''})
+            }
             break
         }
       }
@@ -167,19 +196,15 @@ export default defineComponent({
     },
     unregistrate() {
       this.SEND('unregistrate')
-    }
+    },
   },
 });
 </script>
 <style scoped>
-/*.color-link {*/
-/*  color: #1b6d85;*/
-/*}*/
 .color-grey {
   color: grey;
 }
-
-.text-center {
-
+.page {
+  --ion-background-color: darkgreen;
 }
 </style>

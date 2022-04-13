@@ -9,9 +9,9 @@ User = settings.AUTH_USER_MODEL
 class Tournament(ClassicModelMixin, StartEndMixin):
     is_registration = models.BooleanField(default=False)
     active_now = models.BooleanField(default=False)
-    title = models.CharField(max_length=300, default="")
-    prize = models.CharField(max_length=300, default="")
-    init_stack = models.PositiveSmallIntegerField(default=0)
+    title = models.CharField(max_length=300, default="Обычный")
+    prize = models.CharField(max_length=300, default="100 руб.")
+    init_stack = models.PositiveSmallIntegerField(default=2000)
     seconds_to_think = models.PositiveSmallIntegerField(default=12)
 
     users = models.ManyToManyField(User, blank=True, related_name='tournaments')
@@ -24,6 +24,7 @@ class Tournament(ClassicModelMixin, StartEndMixin):
         """Ближайший турнир"""
         return cls.objects.filter(
             end__isnull=True,
+            active_now=False
         ).first()
 
     @classmethod
@@ -33,7 +34,7 @@ class Tournament(ClassicModelMixin, StartEndMixin):
 
     @classmethod
     def active_tournament(cls):
-        """Активные турнир"""
+        """Активный турнир"""
         return cls.objects.filter(
             active_now=True,
         ).first()

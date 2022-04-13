@@ -14,14 +14,14 @@ async function getTournaments() {
   return []
 }
 
-async function getTournament() {
-  const response = await getZ(tournament_url + '/play')
-
-  if (response) {
-    return response
-  }
-  return []
-}
+// async function getTournament() {
+//   const response = await getZ(tournament_url + '/play')
+//
+//   if (response) {
+//     return response
+//   }
+//   return []
+// }
 
 export {
   getTournaments

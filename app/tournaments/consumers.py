@@ -1,18 +1,65 @@
-from channels.generic.websocket import AsyncJsonWebsocketConsumer, JsonWebsocketConsumer
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 
+from abstractuser.models import User
+from tables.models import Player
+from tables.serializers import PlayerSerializer, TableSerializer
 from tournaments.models import Tournament
 from tournaments.serializers import TournamentPublicSerializer
+from tournaments.utils import is_time_to_registration_tournament
 
 
 class AsyncTournamentConsumer(AsyncJsonWebsocketConsumer):
+    """
+    ТУРНИР.
+    После старта турнира слой уничтожится,
+    но должны создастся слои столов.
+    За одним столом должно быть не более 6 игроков.
+    ID столов нужно записать куда-то юзерам.
+    """
+    user: User
+    layer_name: str
+    table_layer: str | None
+    tournament: Tournament | None
 
     async def connect(self):
         """Соединение."""
         self.user = self.scope['user']
-        await self._init_room_conn()
-        await self.accept()
+        if self.user == AnonymousUser():
+            await self.close()
+
+        # Проверяем есть ли у игрока активная игра
+        game: Player = await self._db('active_game')
+        if game:
+            # ===ИГРА.
+            if not game.table.tournament.active_now:
+                await self.close()
+                return
+            await self.accept()
+            await self.event_individual({
+                'type': 'play',
+                'table': TableSerializer(game.table).data
+            })
+        else:
+            # ===ТУРНИР.
+            # 1. Получаем первый турнир.
+            self.tournament = await self._db('get_tournament')
+            self.layer_name = f'tournament_{self.tournament.id}'
+            # 2. Добавляем в слой турнира
+            await self.channel_layer.group_add(
+                self.layer_name, self.channel_name
+            )
+            # 3. Отправляем всем клиентам новую информацию о турнире
+            await self.channel_layer.group_send(
+                self.layer_name,
+                {
+                    'type': 'event_group_tournament',
+                    'public_type': 'tournament_info',
+                }
+            )
+            await self.accept()
+            await self.event_individual({'type': 'is_registered'})
 
     async def disconnect(self, code):
         pass
@@ -21,55 +68,85 @@ class AsyncTournamentConsumer(AsyncJsonWebsocketConsumer):
         print(f'{content=}')
         match content['command']:
             case 'registrate':
-                await self.registrateUser()
+                if not is_time_to_registration_tournament(self.tournament.start):
+                    return
+                await self._db('registrate_user')
+                await self.event_individual({'type': 'registrate'})
                 await self.channel_layer.group_send(
-                    self.layer_name, {'type': 'sendTournamentInfo'}
+                    self.layer_name,
+                    {
+                        'type': 'event_group_tournament',
+                        'public_type': 'tournament_info',
+                    }
                 )
             case 'unregistrate':
-                await self.unregistrateUser()
+                if not is_time_to_registration_tournament(self.tournament.start):
+                    return
+                await self._db('unregistrate_user')
+                await self.event_individual({'type': 'unregistrate'})
                 await self.channel_layer.group_send(
-                    self.layer_name, {'type': 'sendTournamentInfo'}
+                    self.layer_name,
+                    {
+                        'type': 'event_group_tournament',
+                        'public_type': 'tournament_info',
+                    }
                 )
 
-    async def _init_room_conn(self):
-        if self.user == AnonymousUser():
-            await self.close()
+    async def event_individual(self, event: dict):
+        """Отправка события индивидуально клиенту."""
+        match event['type']:
+            case 'registrate':
+                event['is_registered'] = True
+            case 'unregistrate':
+                event['type'] = 'registrate'
+                event['is_registered'] = False
+            case 'is_registered':
+                tournament = await self._db('get_tournament')
+                users = tournament.users.all() if tournament else []
+                event['type'] = 'registrate'
+                event['is_registered'] = self.user in users
+            case 'play':
+                # Транзитом game, table.
+                ...
+        await self.send_json(event)
 
-        # Получаем турнир
-        self.tournament = await self.getTournament()
+    async def event_group_tournament(self, event: dict):
+        """Отправка события о турнире всем каналам слоя турнира."""
+        match event['public_type']:
+            case 'tournament_info':
+                tournament = await self._db('get_tournament')
+                event['type'] = event['public_type']
+                # del event['public_type']
+                event['tournament'] = TournamentPublicSerializer(tournament).data,
+                event['count_players'] = tournament.users.all().count() if tournament else 0
+        await self.send_json(event)
 
-        self.layer_name = f'tournament_{self.tournament.id}'
-        await self.channel_layer.group_add(
-            self.layer_name, self.channel_name
-        )
+    async def event_group_table(self, event: dict):
+        """Отправка события всем каналам слоя стола."""
+        ...
+        await self.send_json(event)
 
-        await self.channel_layer.group_send(
-            self.layer_name, {'type': 'sendTournamentInfo'}
-        )
-
-    async def sendTournamentInfo(self, event: dict):
-        event['data'] = {
-            'tournament': TournamentPublicSerializer(self.tournament).data,
-            'is_registered': self.user in self.tournament.users.all()
-        }
+    async def celery_event(self, event: dict):
+        """Отправка из Celery события всем каналам слоя турнира."""
+        match event['public_type']:
+            case 'registration_open':
+                # Транзитом event['tournament']
+                event['type'] = event['public_type']
+                event['is_registered'] = False
+            case 'start_tournament':
+                event['type'] = event['public_type']
+                game = await self._db('active_game')
+                event['table'] = 1 if game else 0
         await self.send_json(event)
 
     @database_sync_to_async
-    def getTournament(self) -> Tournament:
-        return Tournament.objects.filter(
-            end__isnull=True
-        ).first()
-
-    @database_sync_to_async
-    def registrateUser(self):
-        self.tournament.users.add(self.user)
-
-    @database_sync_to_async
-    def unregistrateUser(self):
-        self.tournament.users.remove(self.user)
-
-    async def c_send_tournament_info(self, event):
-        await self.send_json(event)
-
-    async def message(self, event):
-        await self.send_json(event)
+    def _db(self, todo: str):
+        match todo:
+            case 'active_game':
+                return self.user.games.last()
+            case 'get_tournament':
+                return Tournament.first_tournament()
+            case 'registrate_user':
+                self.tournament.users.add(self.user)
+            case 'unregistrate_user':
+                self.tournament.users.remove(self.user)

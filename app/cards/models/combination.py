@@ -1,3 +1,6 @@
+from itertools import product
+import random
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -72,3 +75,18 @@ class Combination(models.Model):
             return NameCombination.pair
 
         return NameCombination.high
+
+    @staticmethod
+    def deck() -> list:
+        return list(product(range(2, 15), 'cdrs'))
+
+    @staticmethod
+    def combination_from_deck(deck: list, qry_of_cards: int = 2) -> list:
+        cards = random.sample(deck, qry_of_cards)
+        for card in cards:
+            deck.remove(card)
+        return cards
+
+    @staticmethod
+    def combination_format(combo: list):
+        return [str(card[0]) + card[1] for card in combo]

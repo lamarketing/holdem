@@ -8,3 +8,10 @@ class CardSerializer(ModelSerializer):
     class Meta:
         model = Card
         fields = ('id',)
+
+
+class GameCardSerializer(ModelSerializer):
+
+    class Meta:
+        model = Card
+        fields = ('id', 'nominal', 'suit')

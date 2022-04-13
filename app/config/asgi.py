@@ -10,12 +10,14 @@ from .middleware import DRFAuthMiddleware
 from channels.routing import ProtocolTypeRouter, URLRouter
 
 import tournaments.routing
+import tables.routing
 
 application = ProtocolTypeRouter({
     "http": django_app,
     "websocket": DRFAuthMiddleware(
-        URLRouter(
-            tournaments.routing.websocket_urlpatterns
-        )
+        URLRouter([
+            *tournaments.routing.websocket_urlpatterns,
+            *tables.routing.websocket_urlpatterns,
+        ])
     ),
 })

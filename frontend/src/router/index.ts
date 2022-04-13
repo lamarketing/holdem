@@ -25,7 +25,7 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: 'tournament/play',
         name: 'play',
-        component: () => import('@/views/Tournament.vue')
+        component: () => import('@/views/Play.vue')
       },
       {
         path: 'watch',

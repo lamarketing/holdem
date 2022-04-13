@@ -8,6 +8,7 @@ class CardAdmin(admin.ModelAdmin):
     list_display = ('id', 'nominal', 'suit', 'magic')
     fields = ('nominal', 'suit', 'magic')
     readonly_fields = ('nominal', 'suit', 'magic')
+    search_fields = ('id', 'nominal', 'suit')
 
 
 # @admin.register(Combination)
