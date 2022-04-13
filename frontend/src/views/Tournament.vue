@@ -135,6 +135,10 @@ export default defineComponent({
     this.ON()
 
   },
+  ionViewWillLeave() {
+    console.log('Will Leave')
+    this.socket.close()
+  },
   methods: {
     async auth() {
       this.isLogin = await isAuth(this.username, this.password)
@@ -174,7 +178,7 @@ export default defineComponent({
             if (mess.table) {
               this.$router.push({name: 'play'})
             } else {
-              this.$router.push({name: ''})
+              this.$router.go(0)
             }
             break
         }
