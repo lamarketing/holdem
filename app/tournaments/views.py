@@ -8,7 +8,9 @@ from tournaments.serializers import TournamentPublicSerializer
 
 
 class TournamentMixin:
-    queryset = Tournament.objects.all()
+    queryset = Tournament.objects.filter(
+        end__isnull=True
+    )
 
 
 class TournamentsPublicView(TournamentMixin, ListAPIView):

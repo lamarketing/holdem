@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { RouteRecordRaw } from 'vue-router';
 import Menu from "@/views/Menu.vue";
 import Home from "@/views/Home.vue";
+import Tournament from "@/views/Tournament.vue";
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -20,7 +21,7 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: 'tournament',
         name: 'tournament',
-        component: () => import('@/views/Tournament.vue')
+        component: Tournament
       },
       {
         path: 'tournament/play',

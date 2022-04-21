@@ -34,11 +34,18 @@ class Player(ClassicModelMixin):
     hand = models.ManyToManyField(Card, blank=True)
     hand_value = models.PositiveSmallIntegerField(default=0)
 
-    # position = models.CharField(
-    #     max_length=20,
-    #     choices=PlayerPosition.choices,
-    #     default=PlayerPosition.position
-    # )
+    position = models.CharField(
+        max_length=20,
+        choices=PlayerPosition.choices,
+        default=PlayerPosition.position
+    )
+    move = models.BooleanField(default=False)
+    last_move = models.BooleanField(default=False)
+    is_fold = models.BooleanField(default=False)
+    is_all_in = models.BooleanField(default=False)
+
+    bet = models.PositiveSmallIntegerField(default=0)
+    to_call = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         abstract = False

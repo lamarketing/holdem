@@ -126,18 +126,21 @@ class AsyncTournamentConsumer(AsyncJsonWebsocketConsumer):
         ...
         await self.send_json(event)
 
-    async def celery_event(self, event: dict):
+    async def registration_open(self, event: dict):
         """Отправка из Celery события всем каналам слоя турнира."""
-        match event['public_type']:
-            case 'registration_open':
-                # Транзитом event['tournament']
-                event['type'] = event['public_type']
-                event['is_registered'] = False
-            case 'start_tournament':
-                event['type'] = event['public_type']
-                game = await self._db('active_game')
-                event['table'] = 1 if game else 0
-        await self.send_json(event)
+        await self.send_json({
+            'type': 'registration_open',
+            'is_registered': False,
+            'tournament': event['tournament']
+        })
+
+    async def start_tournament(self, event: dict):
+        """Отправка из Celery события всем каналам слоя турнира."""
+        game = await self._db('active_game')
+        await self.send_json({
+            'type': 'start_tournament',
+            'table': 1 if game else 0,
+        })
 
     @database_sync_to_async
     def _db(self, todo: str):

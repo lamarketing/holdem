@@ -6,7 +6,15 @@ function makeDate(date: string) {
   })
 }
 
+function makeCountDown(date: string) {
+  const start = new Date(date)
+  const now = new Date()
+  // const result = start - now
+  // console.log(result)
+  return Math.round((start.valueOf() - now.valueOf())/1000)
+}
 
 export {
-  makeDate
+  makeDate,
+  makeCountDown
 }

@@ -1,7 +1,11 @@
 from rest_framework import serializers
 
 from cards.serializers import GameCardSerializer
-from tables.models import Table, Player
+from tables.models import (
+    Table, Player,
+    DrawPlayer, Draw,
+    Action,
+)
 
 
 class PlayerSerializer(serializers.ModelSerializer):
@@ -11,7 +15,10 @@ class PlayerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Player
         fields = (
-            'user', 'stack', 'hand'
+            'user', 'stack',
+            'hand', 'to_call',
+            'position', 'move', 'last_move',
+            'is_fold',
         )
 
 
@@ -21,7 +28,9 @@ class PlayerPublicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Player
         fields = (
-            'user', 'stack'
+            'user', 'stack',
+            'position', 'move', 'last_move',
+            'is_fold',
         )
 
 
@@ -31,9 +40,77 @@ class TableSerializer(serializers.ModelSerializer):
     class Meta:
         model = Table
         fields = (
-            'id', 'start', 'end',
-            'tournaments_row',
-            'init_bb',
-            'players',
-            'pot'
+            'players', 'pot', 'bet', 'round',
+            'init_bb', 'how_many_rows',
         )
+
+
+class TableFlopSerializer(serializers.ModelSerializer):
+    players = PlayerPublicSerializer(many=True)
+    flop = GameCardSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Table
+        fields = (
+            'players', 'pot', 'bet', 'round',
+            'init_bb', 'how_many_rows',
+            'flop'
+        )
+
+
+class TableTurnSerializer(serializers.ModelSerializer):
+    players = PlayerPublicSerializer(many=True)
+    flop = GameCardSerializer(many=True, read_only=True)
+    turn = GameCardSerializer(many=False, read_only=True)
+
+    class Meta:
+        model = Table
+        fields = (
+            'players', 'pot', 'bet', 'round',
+            'init_bb', 'how_many_rows',
+            'flop', 'turn'
+        )
+
+
+class TableRiverSerializer(serializers.ModelSerializer):
+    players = PlayerPublicSerializer(many=True)
+    flop = GameCardSerializer(many=True, read_only=True)
+    turn = GameCardSerializer(many=True, read_only=True)
+    river = GameCardSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Table
+        fields = (
+            'players', 'pot', 'bet', 'round',
+            'init_bb', 'how_many_rows',
+            'flop', 'turn', 'river'
+        )
+
+
+class PlayerUserSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()
+
+    class Meta:
+        model = Player
+        fields = ('user',)
+
+
+class ActionSerializer(serializers.ModelSerializer):
+    created_by = PlayerUserSerializer()
+
+    class Meta:
+        model = Action
+        fields = (
+            'created_by', 'name', 'bet',
+        )
+
+
+class DrawPlayerSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = DrawPlayer
+        fields = (
+            'table_row', 'bb', 'pot',
+        )
+
+

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
@@ -6,10 +8,17 @@ from abstractuser.models import User
 from django.db.models import QuerySet
 
 from cards.models import Combination
-from tables.models import Table, Player
+from tables.models import (
+    Table,
+    Player, PlayerPosition,
+    Action, NameRoundChoices, NameActionChoice
+)
 from tournaments.models import Tournament
 from tournaments.serializers import TournamentPublicSerializer
-from tournaments.utils import is_time_to_registration_tournament, is_time_to_active_tournament
+from tournaments.utils import (
+    is_time_to_registration_tournament,
+    is_time_to_active_tournament
+)
 
 
 channel_layer = get_channel_layer()
@@ -29,10 +38,8 @@ def start_registration():
     async_to_sync(channel_layer.group_send)(
         f'tournament_{tournament.id}',
         {
-            'type': 'celery_event',
-            'public_type': 'registration_open',
+            'type': 'registration_open',
             'tournament': TournamentPublicSerializer(tournament).data,
-
         }
     )
 
@@ -57,7 +64,7 @@ def start_tournament():
     tournament.active_now = True
     tournament.save()
 
-    # Создание всех необходимых столов для первого круга.
+    # 1. Создание всех необходимых столов для первого круга.
     tables: list = []
     count_players = tournament.users.count()
     int_for_range = (
@@ -74,10 +81,10 @@ def start_tournament():
             )
         )
     tables = Table.objects.bulk_create(tables) if tables else []
-    print(f'{tables=}')
     if not tables:
         tables.append(Table.objects.create(tournament=tournament, init_bb=10))
 
+    # 2. Раздача борда: флопа, тёрна, ривера.
     for table in tables:
         deck: list = Combination.deck()
         flop: list = Combination.combination_from_deck(deck, 3)
@@ -88,7 +95,7 @@ def start_tournament():
         table.river.add(*Combination.combination_format(river))
         table.all_cards.add(*Combination.combination_format(deck))
 
-    # Создание из юзеров игроков и назначение им столов.
+    # 3. Создание из юзеров игроков, назначение им столов, раздача рук.
     i = 1
     table_i = 0
     users: QuerySet[User] = tournament.users.order_by('?')
@@ -106,17 +113,57 @@ def start_tournament():
         player.hand.add(*hand)
         table.all_cards.remove(*hand)
 
-    # players = Player.objects.bulk_create(games)
+    # 4. Совершение первых действий(ставок sb, bb).
+    for table in tables:
+        table_players = table.players.all()
+        qty_of_players = len(table_players)
+        if qty_of_players == 1:
+            table_players.delete()
+            table.delete()
+            tables.remove(table)
+        elif qty_of_players == 2:
+            player_1: Player = table_players.first()
+            player_1.position = PlayerPosition.dbb
+            player_1.save()
+            player_2: Player = table_players.last()
+            player_2.position = PlayerPosition.sb
+            player_2.move = True
+            player_2.save()
+            Action.objects.create(
+                created_by=player_2,
+                name=NameActionChoice.sb,
+                round=NameRoundChoices.preflop,
+                bet=(table.init_bb * table.how_many_rows)/2
+            )
+            player_1.move = True
+            player_1.save()
+            Action.objects.create(
+                created_by=player_1,
+                name=NameActionChoice.bb,
+                round=NameRoundChoices.preflop,
+                bet=table.init_bb * table.how_many_rows
+            )
+            player_1.last_move = True
+            player_1.bet = table.init_bb * table.how_many_rows
+            player_1.save()
+            player_2.move = True
+            player_2.to_call = (table.init_bb * table.how_many_rows)/2
+            player_2.bet = (table.init_bb * table.how_many_rows) / 2
+            player_2.save()
 
-    # 1 юзер, которому не достался стол, потому что он был бы там один.
-    # last_unlucky_user: str | None = users.last().id if count_players % 6 == 1 else None
-    # tournament.users.remove(users.last())
-    channel_layer
+            table.bet = table.init_bb * table.how_many_rows
+            table.save()
+
+    # 5. Если нет столов - закрыть турнир.
+    if not tables:
+        tournament.is_registration = False
+        tournament.active_now = False
+        tournament.end = datetime.now()
+        tournament.save()
 
     async_to_sync(channel_layer.group_send)(
         f'tournament_{tournament.id}',
         {
-            'type': 'celery_event',
-            'public_type': 'start_tournament',
+            'type': 'start_tournament',
         }
     )

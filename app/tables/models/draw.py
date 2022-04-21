@@ -1,48 +1,58 @@
 from django.db import models
+from abstractuser.models import User
+from cards.models import Card, NameCombination
 
 from common.models import ClassicModelMixin
-from tables.models import Player, NameRoundChoices
+
+
+class DrawPlayer(ClassicModelMixin):
+    user = models.ForeignKey(
+        User, on_delete=models.PROTECT
+    )
+    draw = models.ForeignKey(
+        'Draw', on_delete=models.CASCADE,
+        related_name='draw_players'
+    )
+    hand = models.ManyToManyField(
+        Card, blank=True,
+        related_name='draw_player_hand'
+    )
+    high_five = models.ManyToManyField(
+        Card, blank=True,
+        related_name='draw_player_high'
+    )
+    high_name = models.CharField(
+        max_length=30,
+        choices=NameCombination.choices,
+        default=NameCombination.high
+    )
+    high_value = models.BigIntegerField(default=0)
+
+    winner = models.BooleanField(default=False)
+
+    is_fold = models.BooleanField(default=False)
+
+    class Meta:
+        abstract = False
 
 
 class Draw(ClassicModelMixin):
     """Одна раздача карт на столе."""
-    ended = models.BooleanField(default=False)
-    actions = models.ManyToManyField('Action')
-    bb = models.PositiveSmallIntegerField()
-    round_now = models.CharField(
-        max_length=10,
-        choices=NameRoundChoices.choices,
-        default=NameRoundChoices.preflop
+    table = models.ForeignKey(
+        'Table', on_delete=models.CASCADE
     )
-    dealer = models.ForeignKey(
-        'Player', on_delete=models.PROTECT
-    )
-    player_sb = models.ForeignKey(
-        'Player', on_delete=models.PROTECT
-    )
-    player_bb = models.ForeignKey(
-        'Player', on_delete=models.PROTECT
-    )
-    players_fold = models.ManyToManyField(
-        'Player'
-    )
+    table_row = models.PositiveSmallIntegerField(default=1)
+    bb = models.PositiveSmallIntegerField(default=10)
     pot = models.PositiveSmallIntegerField(default=0)
-    to_call = models.PositiveSmallIntegerField(default=0)
 
-    def choose_init_dealer_sb_bb(self, players: models.QuerySet[Player]) -> None:
-        """Выбирает дилера, малый и большой блайнды для этой раздачи.
-            1. Выбирает dealer, sb, bb
-            2. Сохраняет их в поля из self
-            3. Меняет дилеру порядок, чтобы в следующую раздачу он не стал дилером
-        """
-        players = players.filter(stack__gte=0).order_by('order')
-        dealer: Player = players[0]
-        self.dealer = dealer
-        self.player_sb: Player = players[1]
-        self.player_bb: Player = players[2]
-        self.save()
-        dealer.order += 10
-        dealer.save()
+    flop = models.ManyToManyField(Card, blank=True, related_name='draw_flop')
+    turn = models.ManyToManyField(Card, blank=True, related_name='draw_turn')
+    river = models.ManyToManyField(Card, blank=True, related_name='draw_river')
+
+    players = models.ManyToManyField(
+        User, through='DrawPlayer',
+        blank=True
+    )
 
     class Meta:
         abstract = False

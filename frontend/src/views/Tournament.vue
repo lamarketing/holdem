@@ -37,7 +37,9 @@
         <div v-if="tournament" class="ion-text-center">
           <h2>{{ makeDate(tournament.start) }}</h2>
           <small>время московское</small>
-          <br><br>
+          <br>
+          {{ count_down }}
+          <br>
           <ion-list>
             <ion-item>
               <ion-avatar></ion-avatar>
@@ -84,6 +86,9 @@
           </div>
           <br>
         </div>
+        <div v-else>
+          <ExploreContainer name="ТУРНИР" />
+        </div>
       </ion-grid>
     </ion-content>
   </ion-page>
@@ -91,6 +96,7 @@
 
 <script lang="ts">
 import {defineComponent} from 'vue';
+import ExploreContainer from '@/components/ExploreContainer.vue';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonGrid, IonItem, IonInput, IonLabel, IonButton, IonChip,
@@ -99,7 +105,7 @@ import {
 
 import {trophy, radioButtonOn, timer, people} from 'ionicons/icons';
 
-import {makeDate} from "@/utils/date";
+import {makeDate, makeCountDown} from "@/utils/date";
 
 import {getTokenL, isAuth} from "@/api/auth";
 
@@ -114,6 +120,7 @@ export default defineComponent({
     }
   },
   components: {
+    ExploreContainer,
     IonHeader, IonToolbar, IonTitle, IonContent, IonPage,
     IonGrid, IonItem, IonInput, IonLabel, IonButton, IonChip,
     IonList, IonAvatar, IonIcon,
@@ -128,6 +135,8 @@ export default defineComponent({
       tournament: null,
       count_players: 0,
       is_registered: false,
+      count_down: 0 as number,
+      timerTimer: 0 as any,
     }
   },
   ionViewWillEnter() {
@@ -137,7 +146,14 @@ export default defineComponent({
   },
   ionViewWillLeave() {
     console.log('Will Leave')
-    this.socket.close()
+    // this.socket.close()
+  },
+  watch: {
+    count_down(time) {
+      if (time === 0) {
+        this.stopTimer()
+      }
+    }
   },
   methods: {
     async auth() {
@@ -160,6 +176,9 @@ export default defineComponent({
           case 'tournament_info':
             this.tournament = mess.tournament[0]
             this.count_players = mess.count_players
+            this.count_down = makeCountDown(mess.tournament[0].start)
+            this.stopTimer()
+            this.startTimer()
             break
           case 'tournament_info_init':
             this.tournament = mess.tournament
@@ -187,6 +206,9 @@ export default defineComponent({
         this.tournament = null
         this.is_registered = false
       }
+      this.socket.onerror = (e: any) => {
+        console.log(e)
+      }
     },
     SEND(command: string) {
       return this.socket.send(
@@ -201,6 +223,14 @@ export default defineComponent({
     unregistrate() {
       this.SEND('unregistrate')
     },
+    startTimer() {
+      this.timerTimer = setInterval(() => {
+        this.count_down--
+      }, 1000)
+    },
+    stopTimer() {
+      clearTimeout(this.timerTimer)
+    },
   },
 });
 </script>
@@ -208,7 +238,8 @@ export default defineComponent({
 .color-grey {
   color: grey;
 }
+
 .page {
-  --ion-background-color: darkgreen;
+  /*--ion-background-color: #013210;*/
 }
 </style>

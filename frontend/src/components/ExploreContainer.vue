@@ -1,18 +1,32 @@
 <template>
   <div id="container">
     <strong>{{ name }}</strong>
-    <p>Explore <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
+    <p>Произошли изменения.</p>
+    <p>
+      <ion-button @click="router.go(0)" class="">
+        ОБНОВИТЬ ПРИНУДИТЕЛЬНО
+      </ion-button>
+    </p>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import {defineComponent} from 'vue';
+import {IonButton} from "@ionic/vue";
+import {useRouter} from 'vue-router';
 
 export default defineComponent({
   name: 'ExploreContainer',
   props: {
     name: String
-  }
+  },
+  components: {
+    IonButton
+  },
+  setup() {
+    const router = useRouter();
+    return {router};
+  },
 });
 </script>
 
