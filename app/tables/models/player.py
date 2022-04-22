@@ -47,5 +47,8 @@ class Player(ClassicModelMixin):
     bet = models.PositiveSmallIntegerField(default=0)
     to_call = models.PositiveSmallIntegerField(default=0)
 
+    is_all_in = models.BooleanField(default=False)
+    is_fold = models.BooleanField(default=False)
+
     class Meta:
         abstract = False

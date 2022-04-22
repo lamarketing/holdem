@@ -61,7 +61,7 @@ class TableFlopSerializer(serializers.ModelSerializer):
 class TableTurnSerializer(serializers.ModelSerializer):
     players = PlayerPublicSerializer(many=True)
     flop = GameCardSerializer(many=True, read_only=True)
-    turn = GameCardSerializer(many=False, read_only=True)
+    turn = GameCardSerializer(many=True, read_only=True)
 
     class Meta:
         model = Table

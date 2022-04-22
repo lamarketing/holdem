@@ -274,7 +274,7 @@ export default defineComponent({
     return {
       isLogin: false,
       socket: this.WS(),
-      game: {user: '', stack: 0},
+      game: {user: '', stack: 0, move: false},
       table: {init_bb: 0, how_many_rows: 1},
       board: [] as any,
       hand: [{}, {}],
@@ -400,10 +400,15 @@ export default defineComponent({
         return 'dark'
       }
     },
+    _moveFalse() {
+      this.game.move = false
+    },
     call() {
+      this._moveFalse()
       this.SEND('call')
     },
     check() {
+      this._moveFalse()
       this.SEND('check')
     },
   },
